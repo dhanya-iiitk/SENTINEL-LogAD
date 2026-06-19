@@ -220,28 +220,56 @@ def build_sessions_openstack(
     parser:      DrainParser,
     max_seq_len: int = 100,
     min_seq_len: int = 2,
+    normal_files:   Optional[List[str]] = None,
+    abnormal_files: Optional[List[str]] = None,
 ) -> Tuple[List[List[int]], List[int], List[str]]:
     """
     OpenStack: group by request_id across multiple log files.
+
+    Loghub OpenStack does NOT provide a separate anomaly_label.csv.
+    Instead, ground-truth labels come from WHICH FILE a log line
+    belongs to: normal logs and abnormal (fault-injected) logs are
+    shipped as separate files. A session's label = 1 if any of its
+    lines came from an abnormal-source file, else 0.
+
+    Default filenames follow the loghub OpenStack release
+    (openstack_normal1.log, openstack_normal2.log,
+     openstack_abnormal.log) — override via normal_files /
+    abnormal_files if your filenames differ.
+
     Returns (sessions, labels, request_ids).
-    Labels derived from 'error' keyword presence (unsupervised proxy)
-    or from a provided label file if available.
     """
     print("Building OpenStack sessions...")
 
-    req_lines:  Dict[str, List[str]] = defaultdict(list)
-    req_errors: Dict[str, int]       = defaultdict(int)
+    if normal_files is None:
+        normal_files = ['openstack_normal1.log', 'openstack_normal2.log']
+    if abnormal_files is None:
+        abnormal_files = ['openstack_abnormal.log']
 
-    log_files = [f for f in os.listdir(log_dir) if f.endswith('.log')]
-    for fname in log_files:
+    all_files = [f for f in os.listdir(log_dir) if f.endswith('.log')]
+    unrecognized = [f for f in all_files
+                    if f not in normal_files and f not in abnormal_files]
+    if unrecognized:
+        print(f"  WARNING: unrecognized log files found, skipping: {unrecognized}\n"
+              f"  Pass normal_files=/abnormal_files= explicitly if these "
+              f"should be included.")
+
+    req_lines:     Dict[str, List[str]] = defaultdict(list)
+    req_is_anomaly: Dict[str, bool]     = defaultdict(bool)
+
+    for fname in normal_files + abnormal_files:
         fpath = os.path.join(log_dir, fname)
+        if not os.path.exists(fpath):
+            print(f"  Skipping missing file: {fpath}")
+            continue
+        is_abnormal_source = fname in abnormal_files
         with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
             for line in f:
                 cleaned, req_id = preprocess_openstack(line)
                 if req_id:
                     req_lines[req_id].append(cleaned)
-                    if 'error' in line.lower() or 'exception' in line.lower():
-                        req_errors[req_id] += 1
+                    if is_abnormal_source:
+                        req_is_anomaly[req_id] = True
 
     sessions, labels, req_ids = [], [], []
     for req_id, lines in tqdm(req_lines.items(), desc="Parsing OpenStack requests"):
@@ -249,7 +277,7 @@ def build_sessions_openstack(
             continue
         eids, _ = parser.parse_lines(lines)
         eids = eids[:max_seq_len]
-        label = 1 if req_errors[req_id] > 0 else 0
+        label = 1 if req_is_anomaly[req_id] else 0
         sessions.append(eids)
         labels.append(label)
         req_ids.append(req_id)
