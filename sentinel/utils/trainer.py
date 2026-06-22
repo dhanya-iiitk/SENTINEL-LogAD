@@ -57,7 +57,7 @@ def train_epoch(model, loader, optimizer, device, scaler=None):
         optimizer.zero_grad()
 
         if scaler is not None:
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast('cuda'):
                 loss = model(seq, seq_len, graph)
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
@@ -178,7 +178,7 @@ def train_sentinel(
                                    lr=lr, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                     optimizer, T_max=epochs, eta_min=lr * 0.01)
-    scaler    = torch.cuda.amp.GradScaler() if use_amp and device == 'cuda' else None
+    scaler    = torch.amp.GradScaler('cuda') if use_amp and device == 'cuda' else None
     stopper   = EarlyStopping(patience=patience)
 
     train_losses, val_losses = [], []
@@ -193,7 +193,9 @@ def train_sentinel(
         train_loss = train_epoch(model, train_loader, optimizer, device, scaler)
         train_losses.append(train_loss)
 
-        # ── Val ── (use train loss proxy since val has anomalies)
+        # ── Val ── compute loss on full val batch (includes anomalies)
+        # We use full batch loss as proxy — anomalies will have higher NLL
+        # which slightly inflates val loss but avoids graph batch size mismatch
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
@@ -201,14 +203,7 @@ def train_sentinel(
                 seq     = batch['seq'].to(device)
                 seq_len = batch['seq_len'].to(device)
                 graph   = batch['graph'].to(device)
-                labels  = batch['label']
-                # Only compute loss on normal val samples
-                normal_mask = (labels == 0)
-                if normal_mask.sum() == 0:
-                    continue
-                loss = model(seq[normal_mask], seq_len[normal_mask],
-                             # filter graph batch — approximate with full batch
-                             graph)
+                loss    = model(seq, seq_len, graph)
                 val_loss += loss.item()
         val_loss /= max(len(val_loader), 1)
         val_losses.append(val_loss)
