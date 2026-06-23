@@ -50,7 +50,7 @@ class DrainParser:
     def parse_lines(self, lines: List[str]) -> Tuple[List[int], List[str]]:
         """Parse a list of log lines. Returns (event_ids, templates)."""
         ids, templates = [], []
-        for line in tqdm(lines, desc="Drain parsing", leave=False):
+        for line in lines:
             eid, tmpl = self.parse_line(line)
             ids.append(eid)
             templates.append(tmpl)
