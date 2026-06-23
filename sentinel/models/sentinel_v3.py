@@ -227,15 +227,17 @@ class SENTINELv3(nn.Module):
         flow_hidden:        int   = 512,
         dropout:            float = 0.1,
         max_len:            int   = 512,
-        margin:             float = 10.0,   # contrastive margin
+        margin:             float = 10.0,   # kept for compatibility
         lambda_contrast:    float = 0.5,    # contrastive loss weight
         lambda_recon:       float = 0.1,    # reconstruction loss weight
+        temperature:        float = 0.07,   # InfoNCE temperature
     ):
         super().__init__()
         self.pad_idx         = pad_idx
         self.margin          = margin
         self.lambda_contrast = lambda_contrast
         self.lambda_recon    = lambda_recon
+        self.temperature     = temperature
 
         # Shared embedding
         self.embedding = EventEmbedding(vocab_size, embed_dim, pad_idx)
@@ -273,42 +275,43 @@ class SENTINELv3(nn.Module):
 
     def forward(self, batch):
         """
-        Contrastive training forward pass.
-        batch contains: seq_norm, seq_aug, len_norm, len_aug,
-                        graph_norm, graph_aug
-        Returns: (total_loss, flow_loss, contrast_loss, recon_loss)
+        InfoNCE contrastive training forward pass.
         """
-        seq_n  = batch['seq_norm']
-        seq_a  = batch['seq_aug']
-        len_n  = batch['len_norm']
-        len_a  = batch['len_aug']
+        seq_n   = batch['seq_norm']
+        seq_a   = batch['seq_aug']
+        len_n   = batch['len_norm']
+        len_a   = batch['len_aug']
         graph_n = batch['graph_norm']
         graph_a = batch['graph_aug']
 
-        # Encode both normal and augmented sessions
-        z_n = self.encode(seq_n, len_n, graph_n)   # normal
-        z_a = self.encode(seq_a, len_a, graph_a)   # augmented
+        # Encode both
+        z_n = self.encode(seq_n, len_n, graph_n)
+        z_a = self.encode(seq_a, len_a, graph_a)
 
-        # ── 1. Flow Loss (on normal sessions only) ──
+        # ── 1. Flow Loss (normal sessions only) ──
         flow_loss = -self.flow.log_prob(z_n).mean()
 
-        # ── 2. Contrastive Loss ──
-        # Push normal and augmented embeddings apart
-        # Margin loss: penalize if ||z_n - z_a|| < margin
-        dist          = torch.norm(z_n - z_a, dim=-1)   # [B]
-        contrast_loss = F.relu(self.margin - dist).mean()
+        # ── 2. InfoNCE Contrastive Loss ──
+        # Never collapses — always has in-batch negatives
+        B = z_n.size(0)
+        z_n_norm = F.normalize(z_n, dim=-1)   # [B, D]
+        z_a_norm = F.normalize(z_a, dim=-1)   # [B, D]
 
-        # ── 3. Reconstruction Loss (anti-collapse) ──
-        emb    = self.embedding(seq_n)              # [B, T, D]
-        logits = self.recon_head(emb[:, :-1, :])   # [B, T-1, V]
-        target = seq_n[:, 1:]                        # [B, T-1]
+        # Similarity matrix [B, B] — row i col i = positive pair
+        sim    = torch.mm(z_n_norm, z_a_norm.t()) / self.temperature
+        labels = torch.arange(B, device=z_n.device)
+        contrast_loss = F.cross_entropy(sim, labels)
+
+        # ── 3. Reconstruction Loss ──
+        emb    = self.embedding(seq_n)
+        logits = self.recon_head(emb[:, :-1, :])
+        target = seq_n[:, 1:]
         recon_loss = F.cross_entropy(
             logits.reshape(-1, logits.size(-1)),
             target.reshape(-1),
             ignore_index=self.pad_idx,
         )
 
-        # ── Total Loss ──
         total = (flow_loss
                  + self.lambda_contrast * contrast_loss
                  + self.lambda_recon    * recon_loss)
