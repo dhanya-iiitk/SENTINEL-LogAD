@@ -1,25 +1,37 @@
-from google import genai
+"""
+Explainability evaluation module for SENTINEL.
+Uses Mistral AI (mistral-small-latest) as independent
+evaluator of Groq-generated explanations.
+"""
+from mistralai import Mistral
 import json
 
 THREAT_WORDS = ['attack', 'threat', 'malicious', 'exploit',
                 'breach', 'intrusion', 'compromise', 'adversar']
 
 
-def gemini_score(explanation, top_events, predicted,
-                 gemini_api_key):
-    client     = genai.Client(api_key=gemini_api_key)
+def mistral_evaluate(explanation, top_events, predicted,
+                     mistral_api_key):
+    client     = Mistral(api_key=mistral_api_key)
     events_str = '\n'.join([
         f"  {e['rank']}. [{e['template']}]"
         for e in top_events])
-    prompt = f"""You are an expert cybersecurity analyst.
+    prompt = f"""You are an expert cybersecurity analyst
+evaluating the quality of a log anomaly explanation.
 Predicted label: {predicted}
-Top log events: {events_str}
-Explanation: {explanation}
-Rate (1-5): usefulness and readability.
+Top contributing log events (by Integrated Gradients):
+{events_str}
+Generated explanation:
+{explanation}
+Rate (1-5):
+1. Usefulness: specific, plausible, references events, actionable?
+2. Readability: clear, concise, no hallucinations?
 JSON only: {{"usefulness": X, "readability": X, "comment": "..."}}"""
-    response = client.models.generate_content(
-        model='gemini-1.5-flash', contents=prompt)
-    text = response.text.strip()
+    response = client.chat.complete(
+        model="mistral-small-latest",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1, max_tokens=150)
+    text = response.choices[0].message.content.strip()
     text = text.replace('```json','').replace('```','').strip()
     return json.loads(text)
 
