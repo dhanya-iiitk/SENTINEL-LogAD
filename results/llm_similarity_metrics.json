@@ -1,0 +1,74 @@
+[
+  {
+    "case": "Case 1 \u2014 High Confidence Anomaly",
+    "predicted": "Anomalous",
+    "similarity": {
+      "cosine_similarity": {
+        "LLM1_GPT120B vs LLM2_LLaMA4": 0.698,
+        "LLM1_GPT120B vs LLM3_Qwen3": 0.245,
+        "LLM2_LLaMA4 vs LLM3_Qwen3": 0.431
+      },
+      "avg_cosine": 0.458,
+      "bertscore_f1": {
+        "LLM1_GPT120B vs LLM2_LLaMA4": 0.841,
+        "LLM1_GPT120B vs LLM3_Qwen3": 0.811,
+        "LLM2_LLaMA4 vs LLM3_Qwen3": 0.849
+      },
+      "avg_bertscore": 0.834
+    }
+  },
+  {
+    "case": "Case 2 \u2014 Different Anomaly Pattern",
+    "predicted": "Anomalous",
+    "similarity": {
+      "cosine_similarity": {
+        "LLM1_GPT120B vs LLM2_LLaMA4": 0.737,
+        "LLM1_GPT120B vs LLM3_Qwen3": 0.559,
+        "LLM2_LLaMA4 vs LLM3_Qwen3": 0.606
+      },
+      "avg_cosine": 0.634,
+      "bertscore_f1": {
+        "LLM1_GPT120B vs LLM2_LLaMA4": 0.826,
+        "LLM1_GPT120B vs LLM3_Qwen3": 0.822,
+        "LLM2_LLaMA4 vs LLM3_Qwen3": 0.837
+      },
+      "avg_bertscore": 0.828
+    }
+  },
+  {
+    "case": "Case 3 \u2014 Normal Session",
+    "predicted": "Normal",
+    "similarity": {
+      "cosine_similarity": {
+        "LLM1_GPT120B vs LLM2_LLaMA4": 0.842,
+        "LLM1_GPT120B vs LLM3_Qwen3": 0.821,
+        "LLM2_LLaMA4 vs LLM3_Qwen3": 0.91
+      },
+      "avg_cosine": 0.858,
+      "bertscore_f1": {
+        "LLM1_GPT120B vs LLM2_LLaMA4": 0.88,
+        "LLM1_GPT120B vs LLM3_Qwen3": 0.889,
+        "LLM2_LLaMA4 vs LLM3_Qwen3": 0.916
+      },
+      "avg_bertscore": 0.895
+    }
+  },
+  {
+    "case": "Case 4 \u2014 Borderline Case",
+    "predicted": "Anomalous",
+    "similarity": {
+      "cosine_similarity": {
+        "LLM1_GPT120B vs LLM2_LLaMA4": 0.775,
+        "LLM1_GPT120B vs LLM3_Qwen3": 0.419,
+        "LLM2_LLaMA4 vs LLM3_Qwen3": 0.444
+      },
+      "avg_cosine": 0.546,
+      "bertscore_f1": {
+        "LLM1_GPT120B vs LLM2_LLaMA4": 0.862,
+        "LLM1_GPT120B vs LLM3_Qwen3": 0.815,
+        "LLM2_LLaMA4 vs LLM3_Qwen3": 0.841
+      },
+      "avg_bertscore": 0.839
+    }
+  }
+]
