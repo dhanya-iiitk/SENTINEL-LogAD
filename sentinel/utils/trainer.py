@@ -1,282 +1,222 @@
 # ============================================================
 # sentinel/utils/trainer.py
 # Training loop + YOBDM threshold + Evaluation
+# For SENTINEL: Semi-supervised Log Anomaly Detection
 # ============================================================
 
 import os
 import torch
 import numpy as np
 from tqdm import tqdm
-from sklearn.metrics import (precision_score, recall_score,
-                              f1_score, roc_auc_score,
-                              precision_recall_curve)
-import matplotlib.pyplot as plt
+from sklearn.metrics import (
+    precision_score, recall_score,
+    f1_score, roc_auc_score, roc_curve)
 
 
 # ─────────────────────────────────────────────
-# 1.  YOBDM — Youden-Optimal Boundary Decision
+# 1. YOBDM — Youden-Optimal Boundary Decision
 # ─────────────────────────────────────────────
 
-def compute_youden_threshold(scores: np.ndarray,
-                              labels: np.ndarray) -> float:
+def compute_youden_threshold(
+        scores: np.ndarray,
+        labels: np.ndarray) -> float:
     """
-    Compute the Youden-optimal threshold from validation scores.
-    Youden's J = Sensitivity + Specificity - 1
-               = TPR + TNR - 1
-               = TPR - FPR
-
-    Maximising J gives the best trade-off between sensitivity
-    and specificity — no need to manually tune a threshold.
-
+    Compute the Youden-optimal threshold.
+    Youden's J = TPR - FPR
+    Maximising J gives best trade-off between
+    sensitivity and specificity without manual
+    parameter selection.
     Returns: optimal threshold (float)
     """
-    precisions, recalls, thresholds = precision_recall_curve(labels, scores)
-    # thresholds has len = len(precisions) - 1
-    f1_scores = (2 * precisions[:-1] * recalls[:-1] /
-                 (precisions[:-1] + recalls[:-1] + 1e-8))
-    best_idx = np.argmax(f1_scores)
-    threshold = thresholds[best_idx]
-    print(f"YOBDM threshold: {threshold:.4f}  "
-          f"(val F1={f1_scores[best_idx]:.4f})")
-    return float(threshold)
+    fpr, tpr, thresholds = roc_curve(
+        labels, scores)
+    j        = tpr - fpr
+    best_idx = np.argmax(j)
+    threshold = float(thresholds[best_idx])
+    print(f"  YOBDM threshold : {threshold:.4f}")
+    print(f"  Youden J        : {j[best_idx]:.4f}")
+    print(f"  TPR             : {tpr[best_idx]:.4f}")
+    print(f"  FPR             : {fpr[best_idx]:.4f}")
+    return threshold
 
 
 # ─────────────────────────────────────────────
-# 2.  Single Epoch Training
-# ─────────────────────────────────────────────
-
-def train_epoch(model, loader, optimizer, device, scaler=None):
-    model.train()
-    total_loss = 0.0
-
-    for batch in tqdm(loader, desc="  Train", leave=False):
-        seq     = batch['seq'].to(device)
-        seq_len = batch['seq_len'].to(device)
-        graph   = batch['graph'].to(device)
-
-        optimizer.zero_grad()
-
-        if scaler is not None:
-            with torch.amp.autocast('cuda'):
-                loss = model(seq, seq_len, graph)
-            scaler.scale(loss).backward()
-            scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            scaler.step(optimizer)
-            scaler.update()
-        else:
-            loss = model(seq, seq_len, graph)
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-
-        total_loss += loss.item()
-
-    return total_loss / len(loader)
-
-
-# ─────────────────────────────────────────────
-# 3.  Score Collection (val / test)
+# 2. Collect Anomaly Scores
 # ─────────────────────────────────────────────
 
 def collect_scores(model, loader, device):
     """
-    Run model in inference mode.
-    Returns (scores_np, labels_np).
+    Collect anomaly scores for all sessions.
+    Returns: (scores, labels) as numpy arrays
     """
     model.eval()
     all_scores, all_labels = [], []
-
     with torch.no_grad():
-        for batch in tqdm(loader, desc="  Scoring", leave=False):
-            seq     = batch['seq'].to(device)
-            seq_len = batch['seq_len'].to(device)
-            graph   = batch['graph'].to(device)
-            labels  = batch['label']
-
-            scores = model.score(seq, seq_len, graph)
-            all_scores.append(scores.cpu().numpy())
-            all_labels.append(labels.numpy())
-
+        for batch in loader:
+            scores = model.anomaly_score(
+                batch['seq'].to(device),
+                batch['seq_len'].to(device))
+            all_scores.append(
+                scores.cpu().numpy())
+            all_labels.append(
+                batch['label'].numpy())
     return (np.concatenate(all_scores),
             np.concatenate(all_labels))
 
 
 # ─────────────────────────────────────────────
-# 4.  Metrics Computation
+# 3. Single Epoch Training
 # ─────────────────────────────────────────────
 
-def compute_metrics(scores: np.ndarray,
-                    labels: np.ndarray,
-                    threshold: float) -> dict:
-    preds = (scores >= threshold).astype(int)
-    p  = precision_score(labels, preds, zero_division=0)
-    r  = recall_score(labels, preds, zero_division=0)
-    f1 = f1_score(labels, preds, zero_division=0)
-    try:
-        auc = roc_auc_score(labels, scores)
-    except Exception:
-        auc = float('nan')
+def train_epoch(model, loader, optimizer,
+                device, scaler=None):
+    """
+    Training loop for sequential model.
+    No graph/GNN dependency.
+    """
+    model.train()
+    total_loss = 0.0
+    n_batches  = 0
 
-    return {'precision': p, 'recall': r, 'f1': f1, 'auc': auc,
-            'threshold': threshold}
+    for batch in tqdm(loader,
+                       desc="  Train",
+                       leave=False):
+        seq     = batch['seq'].to(device)
+        seq_len = batch['seq_len'].to(device)
 
+        optimizer.zero_grad()
 
-def print_metrics(metrics: dict, split: str = "Test"):
-    print(f"\n{'='*40}")
-    print(f"  {split} Results")
-    print(f"{'='*40}")
-    print(f"  Precision : {metrics['precision']:.4f}")
-    print(f"  Recall    : {metrics['recall']:.4f}")
-    print(f"  F1 Score  : {metrics['f1']:.4f}")
-    print(f"  AUC-ROC   : {metrics['auc']:.4f}")
-    print(f"  Threshold : {metrics['threshold']:.4f}")
-    print(f"{'='*40}")
-
-
-# ─────────────────────────────────────────────
-# 5.  Full Training Loop
-# ─────────────────────────────────────────────
-
-class EarlyStopping:
-    def __init__(self, patience=10, min_delta=1e-4):
-        self.patience   = patience
-        self.min_delta  = min_delta
-        self.best_loss  = float('inf')
-        self.counter    = 0
-        self.should_stop = False
-
-    def step(self, val_loss: float) -> bool:
-        if val_loss < self.best_loss - self.min_delta:
-            self.best_loss = val_loss
-            self.counter   = 0
+        if scaler is not None:
+            with torch.cuda.amp.autocast():
+                loss = model(seq, seq_len)
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(
+                model.parameters(), 1.0)
+            scaler.step(optimizer)
+            scaler.update()
         else:
-            self.counter += 1
-            if self.counter >= self.patience:
-                self.should_stop = True
-        return self.should_stop
+            loss = model(seq, seq_len)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(
+                model.parameters(), 1.0)
+            optimizer.step()
 
+        total_loss += loss.item()
+        n_batches  += 1
 
-def train_sentinel(
-    model,
-    train_loader,
-    val_loader,
-    epochs:       int   = 50,
-    lr:           float = 1e-3,
-    weight_decay: float = 1e-5,
-    patience:     int   = 10,
-    use_amp:      bool  = True,
-    device:       str   = 'cuda',
-    checkpoint_dir: str = '/content/drive/MyDrive/SENTINEL/checkpoints',
-    dataset_name:   str = 'HDFS',
-):
-    os.makedirs(checkpoint_dir, exist_ok=True)
-    ckpt_path = os.path.join(checkpoint_dir, f'sentinel_{dataset_name}_best.pt')
-
-    model = model.to(device)
-    optimizer = torch.optim.AdamW(model.parameters(),
-                                   lr=lr, weight_decay=weight_decay)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                    optimizer, T_max=epochs, eta_min=lr * 0.01)
-    scaler    = torch.amp.GradScaler('cuda') if use_amp and device == 'cuda' else None
-    stopper   = EarlyStopping(patience=patience)
-
-    train_losses, val_losses = [], []
-    best_val_loss = float('inf')
-
-    print(f"\nTraining SENTINEL on {dataset_name}")
-    print(f"Parameters: {model.count_parameters():,}")
-    print(f"Epochs: {epochs} | LR: {lr} | Device: {device}\n")
-
-    for epoch in range(1, epochs + 1):
-        # ── Train ──
-        train_loss = train_epoch(model, train_loader, optimizer, device, scaler)
-        train_losses.append(train_loss)
-
-        # ── Val ── compute loss on full val batch (includes anomalies)
-        # We use full batch loss as proxy — anomalies will have higher NLL
-        # which slightly inflates val loss but avoids graph batch size mismatch
-        model.eval()
-        val_loss = 0.0
-        with torch.no_grad():
-            for batch in val_loader:
-                seq     = batch['seq'].to(device)
-                seq_len = batch['seq_len'].to(device)
-                graph   = batch['graph'].to(device)
-                loss    = model(seq, seq_len, graph)
-                val_loss += loss.item()
-        val_loss /= max(len(val_loader), 1)
-        val_losses.append(val_loss)
-
-        scheduler.step()
-
-        print(f"Epoch {epoch:3d}/{epochs} | "
-              f"Train Loss: {train_loss:.4f} | "
-              f"Val Loss: {val_loss:.4f} | "
-              f"LR: {scheduler.get_last_lr()[0]:.2e}")
-
-        # ── Save best ──
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            torch.save({'epoch': epoch,
-                        'model_state': model.state_dict(),
-                        'optimizer_state': optimizer.state_dict(),
-                        'val_loss': val_loss}, ckpt_path)
-            print(f"  ✓ Best model saved (val_loss={val_loss:.4f})")
-
-        # ── Early stopping ──
-        if stopper.step(val_loss):
-            print(f"\nEarly stopping at epoch {epoch}")
-            break
-
-    # ── Load best model ──
-    ckpt = torch.load(ckpt_path, map_location=device)
-    model.load_state_dict(ckpt['model_state'])
-    print(f"\nLoaded best model from epoch {ckpt['epoch']}")
-
-    return model, train_losses, val_losses
+    return total_loss / max(n_batches, 1)
 
 
 # ─────────────────────────────────────────────
-# 6.  Plot Training Curves
+# 4. Evaluate
 # ─────────────────────────────────────────────
 
-def plot_training_curves(train_losses, val_losses,
-                          save_path=None, dataset_name='HDFS'):
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(train_losses, label='Train Loss', color='steelblue')
-    ax.plot(val_losses,   label='Val Loss',   color='coral')
-    ax.set_xlabel('Epoch')
-    ax.set_ylabel('NLL Loss')
-    ax.set_title(f'SENTINEL Training — {dataset_name}')
-    ax.legend()
-    ax.grid(alpha=0.3)
-    plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=150)
-        print(f"Training curve saved → {save_path}")
-    plt.show()
+def evaluate(model, loader, threshold,
+             device, prefix="Val"):
+    """
+    Evaluate model using precomputed threshold.
+    Returns: dict with P, R, F1, AUC
+    """
+    scores, labels = collect_scores(
+        model, loader, device)
+    preds = (scores >= threshold).astype(int)
+
+    p   = precision_score(
+        labels, preds, zero_division=0)
+    r   = recall_score(
+        labels, preds, zero_division=0)
+    f1  = f1_score(
+        labels, preds, zero_division=0)
+    auc = roc_auc_score(labels, scores)
+
+    print(f"  {prefix}: P={p:.4f} R={r:.4f} "
+          f"F1={f1:.4f} AUC={auc:.4f}")
+    return {'precision': p, 'recall': r,
+            'f1': f1, 'auc': auc}
 
 
-def plot_score_distribution(scores, labels,
-                             threshold=None, save_path=None,
-                             dataset_name='HDFS'):
-    fig, ax = plt.subplots(figsize=(8, 4))
-    normal_scores  = scores[labels == 0]
-    anomaly_scores = scores[labels == 1]
-    ax.hist(normal_scores,  bins=80, alpha=0.6,
-            label='Normal',    color='steelblue', density=True)
-    ax.hist(anomaly_scores, bins=80, alpha=0.6,
-            label='Anomalous', color='tomato',    density=True)
-    if threshold is not None:
-        ax.axvline(threshold, color='black', linestyle='--',
-                   linewidth=1.5, label=f'YOBDM τ={threshold:.3f}')
-    ax.set_xlabel('Anomaly Score (−log p(z))')
-    ax.set_ylabel('Density')
-    ax.set_title(f'SENTINEL Score Distribution — {dataset_name}')
-    ax.legend()
-    ax.grid(alpha=0.3)
-    plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path, dpi=150)
-    plt.show()
+# ─────────────────────────────────────────────
+# 5. Full Training Loop
+# ─────────────────────────────────────────────
+
+def train_model(model, train_loader,
+                val_loader, optimizer,
+                scheduler, device,
+                save_path, max_epochs=30,
+                patience=15):
+    """
+    Full training loop with early stopping.
+    Uses YOBDM for threshold calibration.
+    Saves best model checkpoint.
+
+    Args:
+        model       : SENTINELSeqFeatureExtract
+        train_loader: normal sessions only
+        val_loader  : mixed normal + anomalous
+        optimizer   : AdamW
+        scheduler   : CosineAnnealingLR
+        device      : cuda or cpu
+        save_path   : checkpoint save path
+        max_epochs  : maximum training epochs
+        patience    : early stopping patience
+    """
+    best_f1    = 0.0
+    best_epoch = 0
+    no_improve = 0
+    scaler     = torch.cuda.amp.GradScaler()
+
+    for epoch in range(1, max_epochs + 1):
+        print(f"\nEpoch {epoch}/{max_epochs}")
+
+        # Train one epoch
+        train_loss = train_epoch(
+            model, train_loader,
+            optimizer, device, scaler)
+        print(f"  Train loss: {train_loss:.4f}")
+
+        # Collect validation scores
+        val_scores, val_labels = collect_scores(
+            model, val_loader, device)
+
+        # Compute YOBDM threshold
+        threshold = compute_youden_threshold(
+            val_scores, val_labels)
+
+        # Compute validation F1
+        val_preds = (
+            val_scores >= threshold).astype(int)
+        val_f1 = f1_score(
+            val_labels, val_preds,
+            zero_division=0)
+        print(f"  Val F1: {val_f1:.4f}")
+
+        # Scheduler step
+        if scheduler is not None:
+            scheduler.step()
+
+        # Early stopping + save best
+        if val_f1 > best_f1:
+            best_f1    = val_f1
+            best_epoch = epoch
+            no_improve = 0
+            torch.save({
+                'epoch'      : epoch,
+                'model_state': model.state_dict(),
+                'threshold'  : threshold,
+                'val_f1'     : val_f1,
+            }, save_path)
+            print(f"  ✓ Best saved "
+                  f"(F1={val_f1:.4f})")
+        else:
+            no_improve += 1
+            print(f"  No improve "
+                  f"({no_improve}/{patience})")
+            if no_improve >= patience:
+                print(f"  Early stopping "
+                      f"at epoch {epoch}")
+                break
+
+    print(f"\nBest epoch : {best_epoch}")
+    print(f"Best val F1: {best_f1:.4f}")
+    return best_f1, best_epoch
