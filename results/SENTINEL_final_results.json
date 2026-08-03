@@ -1,0 +1,26 @@
+{
+  "HDFS": {
+    "precision": 0.9079,
+    "recall": 0.9195,
+    "f1": 0.9137,
+    "auc": 0.9243,
+    "threshold": null,
+    "source": "HDFS_fe_results.json"
+  },
+  "BGL": {
+    "precision": 0.9757,
+    "recall": 0.9891,
+    "f1": 0.9823,
+    "auc": 0.9983,
+    "threshold": 1.528,
+    "source": "BGL_fe_results.json"
+  },
+  "Thunderbird": {
+    "precision": 0.9385,
+    "recall": 0.95,
+    "f1": 0.9442,
+    "auc": 0.9501,
+    "threshold": 1.6743,
+    "source": "Thunderbird_YOBDM_final.json"
+  }
+}
