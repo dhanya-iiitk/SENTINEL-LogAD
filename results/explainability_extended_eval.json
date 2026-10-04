@@ -1,0 +1,542 @@
+[
+  {
+    "case": "Case 1 \u2014 High Confidence Anomaly",
+    "predicted": "Anomalous",
+    "top_events": [
+      {
+        "rank": 1,
+        "position": 0,
+        "event_id": 1051,
+        "template": "<*> <*> <*> RAS KERNEL FATAL Microloader Assertion",
+        "attribution": 0.34173983335494995
+      },
+      {
+        "rank": 2,
+        "position": 1,
+        "event_id": 1051,
+        "template": "<*> <*> <*> RAS KERNEL FATAL Microloader Assertion",
+        "attribution": 0.2917559742927551
+      },
+      {
+        "rank": 3,
+        "position": 2,
+        "event_id": 1051,
+        "template": "<*> <*> <*> RAS KERNEL FATAL Microloader Assertion",
+        "attribution": 0.26434385776519775
+      },
+      {
+        "rank": 4,
+        "position": 3,
+        "event_id": 1051,
+        "template": "<*> <*> <*> RAS KERNEL FATAL Microloader Assertion",
+        "attribution": 0.23207037150859833
+      },
+      {
+        "rank": 5,
+        "position": 4,
+        "event_id": 1051,
+        "template": "<*> <*> <*> RAS KERNEL FATAL Microloader Assertion",
+        "attribution": 0.21335023641586304
+      }
+    ],
+    "grounding": 1.0,
+    "consistent": true,
+    "explanations": {
+      "LLM1_GPT120B": "**1. Why the session is flagged as anomalous**\n\nThe Sentinel engine is looking for patterns that deviate from the baseline of normal BGL activity. The top\u20115 events that drove the anomaly score are **repeated \u201cRAS\u202fKERNEL\u202fFATAL\u202fMicroloader Assertion\u201d** messages, each with a relatively high attribution weight (0.342\u202f\u2192\u202f0.213).  \n\nKey points that make this pattern anomalous:\n\n| Observation | Why it matters |\n|-------------|----------------|\n| **Exact same error type repeated back\u2011to\u2011back** (five consecutive microloader assertions) | Normal operation rarely generates more than one kernel\u2011level assertion in a short window. Repetition suggests a persistent failure condition rather than a one\u2011off glitch. |\n| **High attribution values** (0.342\u20110.213) | The model has learned that these specific signatures are strongly correlated with known fault or attack scenarios. |\n| **Microloader component** | The microloader is part of the early\u2011boot/firmware chain that loads the kernel. Failures here are uncommon in production unless something is corrupting the boot image or the hardware is misbehaving. |\n| **RAS (Reliability, Availability, Serviceability) fatal flag** | Indicates the kernel has deemed the condition unrecoverable, which typically triggers a crash or forced reboot. |\n| **Score\u202f=\u202f0.0000 vs. threshold\u202f=\u202f1.5280** | The anomaly engine treats the *absence* of a normal \u201chealthy\u2011boot\u201d signature as a strong negative signal; the repeated fatal events push the score well below the safe threshold. |\n\nIn short, the log shows a **cluster of high\u2011severity kernel\u2011loader failures** that are not part of any known benign workload, which is why Sentinel flags the session as anomalous.\n\n---\n\n**2. Most likely fault or cyber\u2011threat scenario**\n\n",
+      "LLM2_GPT20B": "",
+      "LLM3_Qwen3": "**1. Why Anomalous**\nThe session is flagged as anomalous due to a high-frequency, repetitive pattern of **RAS KERNEL FATAL Microloader Assertion** events. While the individual attribute scores (0.342, 0.292, etc.) are moderate, the **concentration of identical critical kernel-level failures** within a single session indicates a systemic instability or targeted disruption rather than isolated hardware glitches. The fact that all top-5 events are identical in type and severity suggests a cascading failure loop or a persistent trigger condition that is not being resolved by standard recovery mechanisms.\n\n**2. Most Likely Fault or Cyber Threat**\n*   **Primary Hypothesis: Hardware/BIOS Corruption or Faulty Firmware Update**\n    *   Microloader assertions typically occur during early boot or low-level system initialization. A repeated fatal assertion suggests corrupted firmware, a failed BIOS update, or incompatible hardware (e.g., memory or CPU) causing the microcode to fail validation checks.\n*   **Secondary Hypothesis: Targeted Firmware-Level Attack (e.g., Bootkit or Rootkit)**\n    *   An attacker may have injected malicious code into the microloader or BIOS to trigger intentional assertion failures, causing a denial-of-service (DoS) condition or attempting to bypass security checks. This is less common but high-impact.\n\n**3. Immediate Remediation Step**\n*   **Isolate the affected system from the network** to prevent potential lateral movement if this is a cyber threat.\n*   **Reboot into Safe Mode or BIOS/UEFI Setup** to check for firmware integrity.\n*   **Roll back or reflash the BIOS/UEFI firmware** to the last known good version.\n*   **Run hardware diagnostics** (especially memory and CPU) to rule out physical component failure.\n*   **Preserve logs and memory dumps** for forensic analysis before any further changes are made."
+    },
+    "scores": {
+      "contextual_similarity": 5,
+      "threat_consistency": 4,
+      "remediation_consistency": 3,
+      "overall_quality": 5,
+      "summary": "All three explanations consistently identify the anomaly as a critical microloader failure with high anomaly score, though threat and remediation details vary slightly in emphasis."
+    },
+    "models_used": [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3.8-27b"
+    ],
+    "gs": 0.667,
+    "cr": 1.0,
+    "cos": 0.295,
+    "bert": 0.315,
+    "mistral_cs": 1,
+    "mistral_tc": 1,
+    "mistral_rc": 1,
+    "mistral_oq": 1
+  },
+  {
+    "case": "Case 2 \u2014 Different Anomaly Pattern",
+    "predicted": "Anomalous",
+    "top_events": [
+      {
+        "rank": 1,
+        "position": 0,
+        "event_id": 39,
+        "template": "<*> <*> <*> RAS KERNEL FATAL data TLB error interrupt",
+        "attribution": 0.5589467287063599
+      },
+      {
+        "rank": 2,
+        "position": 1,
+        "event_id": 39,
+        "template": "<*> <*> <*> RAS KERNEL FATAL data TLB error interrupt",
+        "attribution": 0.4134768843650818
+      },
+      {
+        "rank": 3,
+        "position": 2,
+        "event_id": 39,
+        "template": "<*> <*> <*> RAS KERNEL FATAL data TLB error interrupt",
+        "attribution": 0.33804723620414734
+      },
+      {
+        "rank": 4,
+        "position": 3,
+        "event_id": 39,
+        "template": "<*> <*> <*> RAS KERNEL FATAL data TLB error interrupt",
+        "attribution": 0.2892332375049591
+      },
+      {
+        "rank": 5,
+        "position": 5,
+        "event_id": 39,
+        "template": "<*> <*> <*> RAS KERNEL FATAL data TLB error interrupt",
+        "attribution": 0.28377634286880493
+      }
+    ],
+    "grounding": 1.0,
+    "consistent": true,
+    "explanations": {
+      "LLM1_GPT120B": "**1. Why the session is flagged as anomalous**\n\n- **Repetition of the same high\u2011severity event** \u2013 The top\u20115 log entries are *identical* (\u201cRAS\u202fKERNEL\u202fFATAL\u202fdata\u202fTLB\u202ferror\u202finterrupt\u201d) and each carries a relatively high attribution weight (0.559\u202f\u2192\u202f0.284). In a healthy production environment a single TLB\u2011related fatal kernel event is rare; seeing it repeatedly in a short time window is a strong statistical outlier, which pushes the anomaly score well above the normal baseline (hence the Sentinel flag even though the raw score is 0.0000\u202f/\u202f1.5280\u202fthreshold).\n\n- **RAS (Reliability, Availability, Serviceability) kernel fatal** \u2013 RAS events are generated by the hardware/firmware layer when a critical internal error is detected. A \u201cFATAL\u201d severity means the kernel had to abort a thread or the whole OS because it could not safely continue. Multiple fatal TLB (Translation Lookaside Buffer) errors indicate a systemic problem rather than a one\u2011off glitch.\n\n- **TLB\u2011specific nature** \u2013 The Translation Lookaside Buffer is a CPU cache that stores recent virtual\u2011to\u2011physical address translations. Corruption here can cause arbitrary memory accesses, which is a classic vector for both hardware faults (e.g., defective memory, overheating, voltage spikes) **and** sophisticated memory\u2011corruption exploits (e.g., Row\u2011hammer, speculative\u2011execution attacks, or malicious firmware that tampers with page\u2011table entries).\n\nBecause the anomaly engine correlates *frequency*, *severity* and *specificity* of the events, the pattern is deemed anomalous even though the raw numeric score is low \u2013 the system is essentially saying \u201cthis exact pattern has never been seen in the baseline\u201d.\n\n---\n\n**2. Most likely root cause / threat**\n\n| Category | Lik",
+      "LLM2_GPT20B": "",
+      "LLM3_Qwen3": "**1. Why Anomalous**\n\nThe session is flagged as anomalous due to the **high-frequency repetition of identical, critical kernel-level hardware errors**. Specifically, the top 5 attributed events are all instances of `RAS KERNEL FATAL data TLB error interrupt`.\n\n*   **Pattern Deviation:** While a single TLB (Translation Lookaside Buffer) error might be a transient hardware glitch or a rare software bug, five consecutive fatal TLB errors within a short window (implied by the \"Top-5\" attribution) indicate a persistent, systemic failure rather than an isolated incident.\n*   **Severity:** The logs are marked `FATAL`, indicating the kernel has encountered an unrecoverable state. The high attribution scores (0.559, 0.413, etc.) confirm that these specific events are the primary drivers of the anomaly score, even though the final score (0.0000) appears to be a reporting artifact or a reset value (note: a score of 0.0000 is typically *below* the threshold of 1.5280, suggesting a potential logging/reporting bug in SENTINEL, but the *content* of the logs is clearly critical).\n*   **Lack of Context:** The `<*> <*> <*>` placeholders suggest missing or redacted context (e.g., PID, TID, IP), which itself is anomalous for a production system, as it hinders forensic tracing.\n\n**2. Most Likely Fault or Cyber Threat**\n\n*   **Primary Hypothesis: Hardware Failure (Memory/TLB Corruption)**\n    *   **Fault:** Physical RAM corruption, faulty CPU TLB cache, or a failing memory controller. Repeated TLB errors are a classic symptom of hardware degradation.\n    *   **Why:** TLB errors are rarely caused by software alone unless there is a severe kernel bug or memory corruption. The \"FATAL\" nature suggests the OS cannot recover, pointing to a low-level hardware issue.\n\n*   **Secondary Hypothesis: Advanced Cyber Threat (Kernel Exploit/Malware)**\n    *   **Threat:** A sophisticated rootkit or kernel-level malware attempting to corrupt page tables or exploit a TLB vulnerability (e.g., Spectre/Meltdown variants or a zero-day in the memory management unit).\n    *   **Why:** Attackers may deliberately trigger TLB errors"
+    },
+    "scores": {
+      "contextual_similarity": 5,
+      "threat_consistency": 4,
+      "remediation_consistency": 4,
+      "overall_quality": 5,
+      "summary": "All three explanations consistently identify a hardware-level TLB error anomaly with potential cyber threat implications, recommending isolation and diagnostic remediation."
+    },
+    "models_used": [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3.8-27b"
+    ],
+    "gs": 0.667,
+    "cr": 1.0,
+    "cos": 0.323,
+    "bert": 0.314,
+    "mistral_cs": 2,
+    "mistral_tc": 2,
+    "mistral_rc": 1,
+    "mistral_oq": 2
+  },
+  {
+    "case": "Case 3 \u2014 Normal Session",
+    "predicted": "Normal",
+    "top_events": [
+      {
+        "rank": 1,
+        "position": 0,
+        "event_id": 5,
+        "template": "<*> <*> <*> RAS KERNEL INFO generating <*>",
+        "attribution": 0.127477765083313
+      },
+      {
+        "rank": 2,
+        "position": 1,
+        "event_id": 5,
+        "template": "<*> <*> <*> RAS KERNEL INFO generating <*>",
+        "attribution": 0.09830696880817413
+      },
+      {
+        "rank": 3,
+        "position": 2,
+        "event_id": 5,
+        "template": "<*> <*> <*> RAS KERNEL INFO generating <*>",
+        "attribution": 0.08927597850561142
+      },
+      {
+        "rank": 4,
+        "position": 3,
+        "event_id": 5,
+        "template": "<*> <*> <*> RAS KERNEL INFO generating <*>",
+        "attribution": 0.07948893308639526
+      },
+      {
+        "rank": 5,
+        "position": 9,
+        "event_id": 5,
+        "template": "<*> <*> <*> RAS KERNEL INFO generating <*>",
+        "attribution": 0.07328307628631592
+      }
+    ],
+    "grounding": 1.0,
+    "consistent": true,
+    "explanations": {
+      "LLM1_GPT120B": "Based on the information provided, the log entries all show the same \u201cRAS KERNEL INFO generating <*>\u201d messages, and Sentinel has already classified the activity as **NORMAL** with a score of\u202f0.0000. This pattern aligns with routine system behavior and does not indicate any anomalous or suspicious activity.",
+      "LLM2_GPT20B": "The log entries you\u2019ve listed are typical kernel\u2011level informational messages that a system generates during normal operation. They indicate routine kernel activity (e.g., routine checks, status updates, or benign system events) and do not, by themselves, suggest any abnormal or malicious behavior.",
+      "LLM3_Qwen3": "Based on the provided log events and the SENTINEL classification, here is the analysis confirming routine behavior:\n\n### Analysis of Log Events\nThe top 5 events are identical in structure:\n`<*> <*> <*> RAS KERNEL INFO generating <*>`\n\n1.  **Log Level**: `INFO`\n    *   This indicates informational messages, not errors, warnings, or critical alerts.\n    *   In kernel logging, `INFO` level messages are typically used for status updates, initialization confirmations, or routine operational notifications.\n\n2.  **Subsystem**: `RAS` (Reliability, Availability, and Serviceability)\n    *   RAS is a standard kernel subsystem responsible for monitoring hardware health, error handling, and system reliability.\n    *   The phrase \"generating\" in this context likely refers to the generation of RAS records, error logs, or status reports as part of normal background monitoring.\n\n3.  **Repetition**:\n    *   The identical repetition of this message across the top 5 events suggests a periodic or event-driven routine process (e.g., a heartbeat, a scheduled health check, or a consistent stream of non-critical status updates).\n    *   There is no variation in severity, no error codes, and no indication of anomalous patterns (such as rapid escalation or unexpected subsystems).\n\n4.  **SENTINEL Classification**:\n    *   Score = 0.0000 (NORMAL)\n    *   This aligns with the log content, as there are no indicators of compromise (IoCs), unusual system calls, privilege escalations, or data exfiltration patterns.\n\n### Conclusion\nThe logs reflect **routine, expected behavior** of the RAS subsystem performing its standard monitoring and logging functions. The `INFO` level and repetitive nature of the messages are consistent with normal system operation.\n\n**No threats are indicated.**"
+    },
+    "scores": {
+      "contextual_similarity": 5,
+      "threat_consistency": 5,
+      "remediation_consistency": 5,
+      "overall_quality": 5,
+      "summary": "All three explanations consistently and accurately describe the log anomaly as normal system behavior due to routine RAS kernel messages, with no contradictions in threat assessment or remediation."
+    },
+    "models_used": [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3.8-27b"
+    ],
+    "gs": 1.0,
+    "cr": 1.0,
+    "cos": 0.707,
+    "bert": 0.797,
+    "mistral_cs": 5,
+    "mistral_tc": 5,
+    "mistral_rc": 5,
+    "mistral_oq": 4
+  },
+  {
+    "case": "Case 4 \u2014 Borderline Case",
+    "predicted": "Anomalous",
+    "top_events": [
+      {
+        "rank": 1,
+        "position": 4,
+        "event_id": 39,
+        "template": "<*> <*> <*> RAS KERNEL FATAL data TLB error interrupt",
+        "attribution": 0.19454458355903625
+      },
+      {
+        "rank": 2,
+        "position": 0,
+        "event_id": 5,
+        "template": "<*> <*> <*> RAS KERNEL INFO generating <*>",
+        "attribution": 0.11231264472007751
+      },
+      {
+        "rank": 3,
+        "position": 5,
+        "event_id": 5,
+        "template": "<*> <*> <*> RAS KERNEL INFO generating <*>",
+        "attribution": 0.09689011424779892
+      },
+      {
+        "rank": 4,
+        "position": 6,
+        "event_id": 5,
+        "template": "<*> <*> <*> RAS KERNEL INFO generating <*>",
+        "attribution": 0.08313760906457901
+      },
+      {
+        "rank": 5,
+        "position": 1,
+        "event_id": 5,
+        "template": "<*> <*> <*> RAS KERNEL INFO generating <*>",
+        "attribution": 0.07945800572633743
+      }
+    ],
+    "grounding": 1.0,
+    "consistent": true,
+    "explanations": {
+      "LLM1_GPT120B": "**1. Why the session is flagged as anomalous (based on the log events)**  \n\n| # | Log excerpt (redacted) | Attribute score | Why it matters |\n|---|------------------------|----------------|----------------|\n| 1 | `RAS KERNEL FATAL data TLB error interrupt` | **0.195** | A *fatal* error in the Translation Lookaside Buffer (TLB) is a serious kernel\u2011level fault. The TLB is the hardware cache that translates virtual\u2011to\u2011physical addresses; a fatal interrupt indicates the CPU could not recover the translation, which normally forces a kernel panic or a forced reboot. |\n| 2\u20115 | `RAS KERNEL INFO generating <*>` (repeated) | 0.112 \u2013 0.079 | These INFO messages are the kernel\u2019s attempt to **re\u2011generate** internal structures after the fatal TLB event. The rapid succession of \u201cgenerating\u201d logs suggests the kernel is repeatedly trying (and failing) to rebuild the corrupted state. The pattern is atypical for normal operation \u2013 a healthy system would log a single recovery attempt, not a cascade of INFO events. |\n| Overall | **Low anomaly score (0.0000)** but **high\u2011impact event** | Sentinel\u2019s scoring model is tuned to flag *high\u2011impact* low\u2011frequency events even when the statistical anomaly score is near zero. A fatal TLB error is rare enough to trigger an alert despite the raw score. |\n\n**Key take\u2011away:** The combination of a *fatal* hardware\u2011level memory\u2011management fault plus multiple rapid recovery attempts is outside the baseline of normal kernel activity, so Sentinel raises",
+      "LLM2_GPT20B": "**1. Why the session was flagged as anomalous**\n\n| Rank | Log event (masked) | Attribution | Why it matters |\n|",
+      "LLM3_Qwen3": "**1. Why Anomalous**\nThe session is flagged as anomalous because the log sequence indicates a **Kernel Fatal Error** specifically related to memory management, which is a critical stability event.\n*   **Event #1** (`RAS KERNEL FATAL data TLB error interrupt`) is the primary trigger. A TLB (Translation Lookaside Buffer) error signifies a failure in the CPU\u2019s hardware cache that maps virtual addresses to physical addresses. This is not a standard operational log; it represents a hardware or low-level software fault that typically halts execution or triggers a panic.\n*   **Events #2\u20135** (`RAS KERNEL INFO generating <*>`) are likely the kernel\u2019s automatic response to the fatal error, such as generating a crash dump, core dump, or error report. The clustering of these \"generating\" events immediately following the fatal TLB error confirms a cascading failure state rather than normal activity.\n*   Although the SENTINEL score (0.0000) appears below the threshold (1.5280), the **presence of a `FATAL` level RAS (Reliability, Availability, and Serviceability) kernel event** is inherently anomalous in a healthy system. The low score may be due to the rarity of this specific pattern in the training data or a scoring normalization issue, but the semantic content of Event #1 is definitive for anomaly.\n\n**2. Most Likely Fault or Cyber Threat**\n*   **Most Likely: Hardware Fault (Memory/CPU)**\n    *   TLB errors are predominantly caused by **physical memory (RAM) corruption**, faulty CPU cache, or defective motherboard components. This is a classic RAS (Reliability, Availability, and Serviceability) event indicating hardware degradation.\n*   **Less Likely but Possible: Cyber Threat**\n    *   **Exploitation of Kernel Vulnerabilities:** An attacker could exploit a kernel bug to corrupt TLB entries, leading to a denial-of-service (DoS) or potentially privilege escalation. However, this is less common than hardware failure.\n    *   **Malware Interference:** Certain rootkits or hypervisor-level malware might interfere with memory management, but this would usually present with other suspicious network or process activity.\n\n**3. Immediate Remediation Step**\n1.  **Isolate the Host:** Immediately remove the affected system from the production network to prevent potential data corruption or lateral movement if this is"
+    },
+    "scores": {
+      "contextual_similarity": 5,
+      "threat_consistency": 5,
+      "remediation_consistency": 4,
+      "overall_quality": 5,
+      "summary": "All three explanations consistently identify a hardware-induced TLB error as the root cause of the anomaly, with minor variations in remediation emphasis."
+    },
+    "models_used": [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3.8-27b"
+    ],
+    "gs": 0.667,
+    "cr": 1.0,
+    "cos": 0.628,
+    "bert": 0.806,
+    "mistral_cs": 2,
+    "mistral_tc": 2,
+    "mistral_rc": 1,
+    "mistral_oq": 2
+  },
+  {
+    "case": "HDFS Case 1",
+    "dataset": "HDFS",
+    "predicted": "Anomalous",
+    "true_label": 1,
+    "anomaly_score": 28.8907,
+    "threshold": 0.6573,
+    "top_events": [
+      {
+        "rank": 1,
+        "position": 9,
+        "event_id": 65,
+        "template": "INFO dfs.DataNode$PacketResponder: PacketResponder <*> for block <*> <*>",
+        "attribution": 2.866112232208252
+      },
+      {
+        "rank": 2,
+        "position": 7,
+        "event_id": 65,
+        "template": "INFO dfs.DataNode$PacketResponder: PacketResponder <*> for block <*> <*>",
+        "attribution": 2.60561466217041
+      },
+      {
+        "rank": 3,
+        "position": 3,
+        "event_id": 26,
+        "template": "INFO dfs.FSNamesystem: BLOCK* NameSystem.allocateBlock: <*> <*>",
+        "attribution": 2.47957706451416
+      },
+      {
+        "rank": 4,
+        "position": 5,
+        "event_id": 64,
+        "template": "INFO dfs.DataNode$DataXceiver: writeBlock <*> received exception <*>",
+        "attribution": 2.2256977558135986
+      },
+      {
+        "rank": 5,
+        "position": 6,
+        "event_id": 65,
+        "template": "INFO dfs.DataNode$PacketResponder: PacketResponder <*> for block <*> <*>",
+        "attribution": 1.9483212232589722
+      }
+    ],
+    "explanations": {
+      "LLM1_GPT120B": "**1. Why the session is flagged as anomalous (based on the top\u20115 events)**  \n\n| # | Log excerpt (redacted) | What the line tells us | Why it contributes to the anomaly score |\n|---|------------------------|------------------------|------------------------------------------|\n| 1 | `INFO dfs.DataNode$PacketResponder: PacketResponder <*> for block <*> <*> (attr=2.866)` | A **PacketResponder** thread on a DataNode is handling a block\u2011transfer request. The \u201cattr\u201d value is a derived feature (e.g., frequency, latency, or error\u2011weight) that the Sentinel model has learned to be **highly unusual** when it exceeds ~2.5. | The attribute is well above the baseline for normal block\u2011transfer traffic, indicating an abnormal burst of packet\u2011level activity. |\n| 2 | Same pattern, `attr=2.606` | Re\u2011occurrence of the same high\u2011weight packet\u2011responder event within a short time window. | Repeated high\u2011weight events amplify the anomaly score (the model treats temporal clustering as a strong indicator of misuse or failure). |\n| 3 | `INFO dfs.FSNamesystem: BLOCK* NameSystem.allocateBlock: <*> <*> (attr=2.480)` | The NameNode is allocating blocks at a rate or with parameters that differ from normal operation (e.g., unusually large",
+      "LLM2_GPT20B": "**1. Why the session was flagged as anomalous**\n\n| # | Log line (trimmed) | What it normally means | Why it looks suspicious |\n|---|--------------------|------------------------|--------------------------|\n| 1 | `INFO dfs.DataNode$PacketResponder: PacketResponder <*> for block <*> <*>` | Normal packet\u2011response for a block transfer. | The attribute score (2.866) is far above the normal \u201cquiet\u201d level (\u22480.1\u20110.3). It indicates an unusually high number of packet\u2011responses in a short period. |\n| 2 | Same as #1 | Same | Second high\u2011score packet\u2011response (2.606). The repetition suggests a burst of traffic. |\n| 3 | `INFO dfs.FSNamesystem: BLOCK* NameSystem.allocateBlock: <*> <*>",
+      "LLM3_Qwen3": "Based on the log events provided and the high anomaly score, here is the analysis:\n\n### 1. Why Anomalous\nThe session is flagged as anomalous due to a **high-frequency, repetitive pattern of data node communication failures** combined with **block allocation activity**. Specifically:\n*   **Dominance of `PacketResponder` Logs (Events 1, 2, 5):** Three out of the top five events are `PacketResponder` logs. In normal HDFS operation, `PacketResponder` logs are typically low-volume or absent unless there is significant data transfer or, more critically, **retransmission due to packet loss or timeout**. The high attribution scores (2.866, 2.606, 1.948) indicate these events are statistically rare or occurring at an abnormal rate.\n*   **Exception in `DataXceiver` (Event 4):** The `writeBlock ... received exception` log indicates that a data write operation failed. This is a direct signal of I/O error, network interruption, or disk failure.\n*   **Correlation with Block Allocation (Event 3):** The presence of `NameSystem.allocateBlock` suggests that new blocks are being created or reassigned. When combined with write exceptions and frequent packet responder activity, this points to a **retry loop** where the NameNode is allocating blocks, DataNodes attempt to write, fail, and then engage in packet retransmission or error handling.\n\nThis combination is not typical of steady-state read/write operations. It suggests a **degraded state** where the system is struggling to complete data replication or writes, leading to a burst of error-handling and retransmission logs.\n\n### 2. Most Likely Fault or Cyber Threat\n**Most Likely: Infrastructure Fault (Network or Disk Failure)**\n*   **Network Partition/Instability:** The `PacketResponder` logs strongly suggest TCP packet loss or timeouts between DataNodes and the client/other DataNodes. This could be due to a failing network switch, saturated link, or misconfigured network interface.\n*   **Failing Disk on a DataNode:** The `writeBlock ... received exception` is a classic symptom of a failing disk (e.g., I/O error, bad sector). The DataNode may be repeatedly attempting to write to a bad disk, failing, and triggering retransmission or error logs.\n\n**Less Likely but Possible: Cyber Threat"
+    },
+    "gs": 0.8,
+    "cr": 1.0,
+    "cos": 0.748,
+    "bert": 0.821,
+    "cs": 5,
+    "oq": 5,
+    "models_used": [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3.8-27b"
+    ],
+    "mistral_cs": 4,
+    "mistral_tc": 5,
+    "mistral_rc": 4,
+    "mistral_oq": 3,
+    "spearman_rho": 0.72,
+    "overlap": "4/5"
+  },
+  {
+    "case": "HDFS Case 2",
+    "dataset": "HDFS",
+    "predicted": "Anomalous",
+    "true_label": 1,
+    "anomaly_score": 28.6614,
+    "threshold": 0.6573,
+    "top_events": [
+      {
+        "rank": 1,
+        "position": 4,
+        "event_id": 65,
+        "template": "INFO dfs.DataNode$PacketResponder: PacketResponder <*> for block <*> <*>",
+        "attribution": 3.3950424194335938
+      },
+      {
+        "rank": 2,
+        "position": 2,
+        "event_id": 26,
+        "template": "INFO dfs.FSNamesystem: BLOCK* NameSystem.allocateBlock: <*> <*>",
+        "attribution": 2.5002400875091553
+      },
+      {
+        "rank": 3,
+        "position": 10,
+        "event_id": 65,
+        "template": "INFO dfs.DataNode$PacketResponder: PacketResponder <*> for block <*> <*>",
+        "attribution": 2.0960474014282227
+      },
+      {
+        "rank": 4,
+        "position": 3,
+        "event_id": 88,
+        "template": "INFO <*> <*> <*> <*> <*> java.net.SocketTimeoutException: <*> millis timeout while waiting for channel to be ready for <*> ch : java.nio.channels.SocketChannel[connected <*> <*>",
+        "attribution": 1.9047706127166748
+      },
+      {
+        "rank": 5,
+        "position": 5,
+        "event_id": 91,
+        "template": "INFO dfs.DataNode$PacketResponder: PacketResponder <*> <*> Exception <*>",
+        "attribution": 1.6185190677642822
+      }
+    ],
+    "explanations": {
+      "LLM1_GPT120B": "**1. Why the session is flagged as anomalous (based on the top\u20115 events)**  \n\n| # | Log excerpt (redacted) | What it tells us | Why it raises an alarm |\n|---|------------------------|------------------|------------------------|\n| 1 | `dfs.DataNode$PacketResponder: PacketResponder <*> for block <*> <*> (attr=3.395)` | Repeated \u201cPacketResponder\u201d activity for the same block (or a set of blocks) with a high *attribute* score. | A burst of packet\u2011responder events is unusual under normal write/read traffic; the attribute value (3.395) is well above the baseline, indicating abnormal processing latency or error handling. |\n| 2 | `dfs.FSNamesystem: BLOCK* NameSystem.allocateBlock: <*> <*> (attr=2.500)` | The NameNode is allocating blocks at a higher\u2011than\u2011normal rate. | Sudden spikes in block allocation can be a symptom of a client flooding the cluster with create\u2011file requests (possible DoS) or a mis\u2011behaving application that repeatedly retries failed writes. |\n| 3 | `dfs.DataNode$PacketResponder: PacketResponder <*> for block <*> <*> (attr=2.096)` | A second \u201cPacketResponder\u201d entry, again with a high attribute score, confirming the pattern seen in #1. | Reinforces the notion of a sustained abnormal packet\u2011handling loop. |\n| 4 | `java.net.SocketTimeoutException: <*> millis timeout while waiting for channel to be ready for <*> ch : java.nio.channels.SocketChannel[connected <*> <*> (attr=1.905)` | Socket timeout while establishing/maintaining a channel between client and DataNode. | Timeouts are a classic symptom of network congestion, resource exhaustion, or a deliberate throttling/slow\u2011loris style attack on the DataNode\u2019s RPC endpoint. |\n|",
+      "LLM2_GPT20B": "**1. Why the session was flagged as anomalous**\n\n| # | Log snippet | What it normally means | Why it looks suspicious in this context",
+      "LLM3_Qwen3": "Based on the log events provided and the high anomaly score (28.6614), here is the analysis:\n\n### 1. Why Anomalous\nThe session is flagged as anomalous due to a **high-frequency pattern of I/O failures and timeouts** during data block transmission, specifically involving `PacketResponder` and `SocketTimeoutException`.\n\n*   **Event 4 (Critical Indicator):** The presence of `java.net.SocketTimeoutException` while waiting for a channel to be ready indicates that the DataNode is failing to maintain a stable network connection with the client or another DataNode during block transfer. This is not typical behavior for a healthy HDFS cluster.\n*   **Events 1, 3, & 5 (Correlated Failures):** The repeated `PacketResponder` entries (especially Event 5 mentioning `Exception`) suggest that multiple packet transfers are failing or being retried. The high attribution scores (3.395, 2.096, 1.619) indicate these events are statistically significant deviations from the baseline.\n*   **Event 2 (Context):** `NameSystem.allocateBlock` shows that the system is actively trying to write new data, which triggers the subsequent packet transfers that are now failing.\n\n**Conclusion:** The combination of active block allocation followed by repeated socket timeouts and packet responder exceptions indicates a **sustained network or I/O bottleneck** rather than a one-off glitch.\n\n### 2. Most Likely Fault or Cyber Threat\n**Most Likely: Network Infrastructure Failure or Misconfiguration (Fault)**\n*   **Network Congestion/Partition:** The `SocketTimeoutException` strongly suggests that the network link between the DataNode and the client (or other DataNodes) is congested, flapping, or partitioned. This could be due to:\n    *   A failing NIC or switch port.\n    *   Firewall rules dropping packets or causing delays.\n    *   Network bandwidth saturation.\n*   **Secondary Possibility: Resource Exhaustion on DataNode**\n    *   If the DataNode is under heavy CPU or memory load, it may fail to process socket channels in time, leading to timeouts. However, the specific `SocketTimeoutException` points more strongly to network-layer issues.\n\n**Cyber Threat Consideration (Lower Probability but Must Rule Out):**\n*   **Denial of Service (DoS):** An attacker could be"
+    },
+    "gs": 0.6,
+    "cr": 1.0,
+    "cos": 0.564,
+    "bert": 0.783,
+    "cs": 5,
+    "oq": 5,
+    "models_used": [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3.8-27b"
+    ],
+    "mistral_cs": 4,
+    "mistral_tc": 4,
+    "mistral_rc": 3,
+    "mistral_oq": 3,
+    "spearman_rho": 0.868,
+    "overlap": "4/5"
+  },
+  {
+    "case": "TB Case 1",
+    "dataset": "TB",
+    "predicted": "Anomalous",
+    "true_label": 1,
+    "anomaly_score": 16.8731,
+    "threshold": 1.9338,
+    "top_events": [
+      {
+        "rank": 1,
+        "position": 0,
+        "event_id": 10322,
+        "template": "<*> <*> <*> kernel: [KERNEL_IB][ib_mad_dispatch][/mnt_projects/sysapps/src/ib/topspin/topspin-src-3.2.0-16/ib/ts_api_ng/mad/obj_host_amd64_custom1_rhel4/ts_ib_mad/mad_filter.c:292]mad_process failed (0) for InfiniHost0 port 1 QPN 0 (class 0x81, aid <*>",
+        "attribution": 0.3235287666320801
+      },
+      {
+        "rank": 2,
+        "position": 1,
+        "event_id": 10323,
+        "template": "<*> <*> <*> kernel: <*> <*> failed, return code = -254 (Fatal error (Local Catastrophic Error))",
+        "attribution": 0.11826510727405548
+      },
+      {
+        "rank": 3,
+        "position": 2,
+        "event_id": 10323,
+        "template": "<*> <*> <*> kernel: <*> <*> failed, return code = -254 (Fatal error (Local Catastrophic Error))",
+        "attribution": 0.10812556743621826
+      },
+      {
+        "rank": 4,
+        "position": 3,
+        "event_id": 10323,
+        "template": "<*> <*> <*> kernel: <*> <*> failed, return code = -254 (Fatal error (Local Catastrophic Error))",
+        "attribution": 0.09407913684844971
+      },
+      {
+        "rank": 5,
+        "position": 4,
+        "event_id": 10323,
+        "template": "<*> <*> <*> kernel: <*> <*> failed, return code = -254 (Fatal error (Local Catastrophic Error))",
+        "attribution": 0.08847633749246597
+      }
+    ],
+    "explanations": {
+      "LLM1_GPT120B": "**1. Why the session is flagged as anomalous**\n\n| Log excerpt | Why it raises an alarm |\n|-------------|------------------------|\n| **`mad_process failed (0) for InfiniHost0 port 1 QPN 0 (class 0x81, aid \u2026)`** | The MAD (Management Datagram) handler is the core of the InfiniBand management stack. A *failed* MAD processing on the **primary fabric port** (`InfiniHost0`) indicates that the kernel is unable to parse or route management packets. This is unusual in a healthy cluster \u2013 the InfiniBand fabric should process MADs continuously for link\u2011state, QoS, and SRP/SM traffic. |\n| **Repeated \u201c`failed, return code = -254 (Fatal error (Local Catastrophic Error))`** (four occurrences) | Return code **\u2011254** is defined in the InfiniBand driver as a *local catastrophic error* \u2013 the driver has detected an unrecoverable condition (e.g., corrupted descriptor, DMA fault, or hardware lock\u2011up). The fact that the same fatal error appears **four times in rapid succession** (and each entry carries a non\u2011zero \u201cattr\u201d weight) drives the anomaly score well above the threshold. |\n| **All entries are from the `kernel` facility** | Kernel\u2011level failures bypass user\u2011space sanity checks and can compromise the entire node. The Sentinel model gives higher weight to kernel\u2011origin events, especially when they involve low\u2011level fabric drivers. |\n| **High attribute weights (0.324, 0.118, 0.108, 0.094, 0.088)** | The attribute values are the model\u2011derived \u201crisk contribution\u201d for each event. The first MAD\u2011process failure alone contributes ~0.32 to the score; the four catastrophic\u2011error entries together add ~0.41, pushing the cumulative score to **16.87** (far above the 1.93 threshold). |\n\nIn short",
+      "LLM2_GPT20B": "**1. Why the session is flagged as anomalous**\n\n| # | Log snippet | Why it matters |\n|---|-------------|----------------|\n| 1 | `kernel: [KERNEL_IB][ib_mad_dispatch]\u2026mad_process failed (0) for InfiniHost0 port 1 QPN 0 (class 0x81, aid \u2026)` | A MAD (Management Datagram) failure in the InfiniBand stack is a low\u2011level kernel event. MADs are",
+      "LLM3_Qwen3": "Based on the log events provided and the high anomaly score (16.8731 vs. threshold 1.9338), here is the analysis:\n\n### 1. Why Anomalous\nThe session is flagged as anomalous due to a **high-frequency burst of fatal kernel-level errors** specifically related to the InfiniBand (IB) subsystem.\n\n*   **Repetition of Fatal Errors:** Events 2\u20135 show four consecutive occurrences of `return code = -254 (Fatal error (Local Catastrophic Error))`. In normal operation, such fatal errors are rare and isolated. A rapid succession indicates a systemic failure or a triggered fault condition rather than a transient glitch.\n*   **Specific IB MAD Failure:** Event 1 highlights a failure in `mad_process` for `InfiniHost0 port 1` with `QPN 0` and `class 0x81`. Class `0x81` corresponds to **InfiniBand Management Data (MAD) packets**, which are used for fabric management, routing, and diagnostics. A failure here disrupts the control plane of the IB network.\n*   **High Attribution Score:** The top event has an attribute score of `0.324`, significantly higher than the others, indicating that the `mad_process` failure is the primary driver of the anomaly, with the subsequent fatal errors being cascading consequences.\n\n### 2. Most Likely Fault or Cyber Threat\n**Most Likely: Hardware/Driver Fault (InfiniBand HCA or Firmware Issue)**\n\n*   **Reasoning:**\n    *   `Local Catastrophic Error` (-254) in IB contexts typically indicates a hardware-level failure in the Host Channel Adapter (HCA), such as a firmware crash, memory corruption in the HCA, or a physical link instability that the driver cannot recover from.\n    *   The specific mention of `topspin-src-3.2.0-16` suggests a legacy or specific vendor driver stack. Older driver versions may have known bugs under certain load conditions or firmware mismatches.\n    *   **Cyber Threat Probability: Low.** While a targeted attack could exploit IB management channels (e.g., via malicious MAD packets), the nature of the error (`Local Catastrophic`) points more strongly to an internal hardware/driver state failure rather than an external injection. However, if"
+    },
+    "gs": 0.933,
+    "cr": 1.0,
+    "cos": 0.726,
+    "bert": 0.827,
+    "cs": 5,
+    "oq": 5,
+    "models_used": [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3.8-27b"
+    ],
+    "mistral_cs": 4,
+    "mistral_tc": 5,
+    "mistral_rc": 1,
+    "mistral_oq": 3,
+    "spearman_rho": 0.923,
+    "overlap": "5/5"
+  },
+  {
+    "case": "TB Case 2",
+    "dataset": "TB",
+    "predicted": "Anomalous",
+    "true_label": 1,
+    "anomaly_score": 16.4694,
+    "threshold": 1.9338,
+    "top_events": [
+      {
+        "rank": 1,
+        "position": 0,
+        "event_id": 10322,
+        "template": "<*> <*> <*> kernel: [KERNEL_IB][ib_mad_dispatch][/mnt_projects/sysapps/src/ib/topspin/topspin-src-3.2.0-16/ib/ts_api_ng/mad/obj_host_amd64_custom1_rhel4/ts_ib_mad/mad_filter.c:292]mad_process failed (0) for InfiniHost0 port 1 QPN 0 (class 0x81, aid <*>",
+        "attribution": 0.23035426437854767
+      },
+      {
+        "rank": 2,
+        "position": 3,
+        "event_id": 10322,
+        "template": "<*> <*> <*> kernel: [KERNEL_IB][ib_mad_dispatch][/mnt_projects/sysapps/src/ib/topspin/topspin-src-3.2.0-16/ib/ts_api_ng/mad/obj_host_amd64_custom1_rhel4/ts_ib_mad/mad_filter.c:292]mad_process failed (0) for InfiniHost0 port 1 QPN 0 (class 0x81, aid <*>",
+        "attribution": 0.21385960280895233
+      },
+      {
+        "rank": 3,
+        "position": 1,
+        "event_id": 10322,
+        "template": "<*> <*> <*> kernel: [KERNEL_IB][ib_mad_dispatch][/mnt_projects/sysapps/src/ib/topspin/topspin-src-3.2.0-16/ib/ts_api_ng/mad/obj_host_amd64_custom1_rhel4/ts_ib_mad/mad_filter.c:292]mad_process failed (0) for InfiniHost0 port 1 QPN 0 (class 0x81, aid <*>",
+        "attribution": 0.17490074038505554
+      },
+      {
+        "rank": 4,
+        "position": 2,
+        "event_id": 10322,
+        "template": "<*> <*> <*> kernel: [KERNEL_IB][ib_mad_dispatch][/mnt_projects/sysapps/src/ib/topspin/topspin-src-3.2.0-16/ib/ts_api_ng/mad/obj_host_amd64_custom1_rhel4/ts_ib_mad/mad_filter.c:292]mad_process failed (0) for InfiniHost0 port 1 QPN 0 (class 0x81, aid <*>",
+        "attribution": 0.16704107820987701
+      },
+      {
+        "rank": 5,
+        "position": 6,
+        "event_id": 10323,
+        "template": "<*> <*> <*> kernel: <*> <*> failed, return code = -254 (Fatal error (Local Catastrophic Error))",
+        "attribution": 0.08732888102531433
+      }
+    ],
+    "explanations": {
+      "LLM1_GPT120B": "**1. Why Sentinel flagged the session as anomalous**\n\n| Indicator | Why it raises an alarm |\n|-----------|------------------------|\n| **Repeated \u201cmad_process failed (0)\u201d messages** (4\u00d7 in a short time) | The MAD (Management Datagram) handler in the InfiniBand stack is failing repeatedly for the same host/port (InfiniHost0\u202fport\u202f1, QPN\u202f0, class\u202f0x81). Normal operation would see occasional MAD failures, but a burst of identical failures in a narrow time window is statistically rare \u2013 the anomaly\u2011score engine therefore spikes the score. |\n| **Same source line, same file, same class** (`mad_filter.c:292`, class\u202f0x81) | The concentration on a single code path suggests a systemic problem (e.g., a corrupted driver, mis\u2011configured firmware, or a crafted packet that triggers a bug). Sentinel treats \u201chigh\u2011frequency failures on a single code location\u201d as a strong indicator of abnormal activity. |\n| **Increasing attribute\u2011weight values** (0.230 \u2192 0.214 \u2192 0.175 \u2192 0.167) | The scoring model weights each event by its \u201cattribute\u201d confidence. The descending values still keep the cumulative score well above the threshold (16.47\u202fvs\u202f1.93). |\n| **Fatal error \u201creturn code = -254 (Local Catastrophic Error)\u201d** | A catastrophic error in the kernel driver is a critical condition. Sentinel\u2019s rule set flags any occurrence of a fatal driver error together with repeated MAD failures as a high\u2011severity anomaly. |\n| **All events are generated by the kernel (no user\u2011space context)** | Kernel\u2011only noise eliminates the possibility of normal application\u2011level traffic; it points to a low\u2011level subsystem that is either malfunctioning or being targeted. |\n\nTogether, these patterns push the anomaly score far beyond the baseline, so Sentinel raises an alert.\n\n---\n\n**2. Most likely fault or cyber\u2011threat scenario**\n\n| Possibility | Evidence supporting it | Likelihood |\n|-------------",
+      "LLM2_GPT20B": "**1. Why the session was flagged as anomalous**\n\n| # | Log snippet | What it tells us | Why it is suspicious |\n|---|-------------|------------------|----------------------|\n| 1 | `mad_process failed (0) for InfiniHost0 port 1 QPN 0 (class 0x81, aid <*> (attr=0.230)` | The kernel\u2019s InfiniBand MAD (Management Datagram) dispatcher is rejecting a MAD that was received on port\u202f1, queue\u2011pair number\u202f0, class\u202f0x81 (which is the *Management* class). | A MAD failure is normal only when the packet is malformed or the target QPN is not active. Seeing **five identical failures in a row** (all with the same QPN\u202f0) is highly unusual \u2013 it indicates that the driver is repeatedly receiving the same malformed or unexpected packet. |\n| 2 | Same as #1 (different `attr` values) | Same pattern, different attribute values. | The variation in `attr` suggests the attacker (or faulty firmware) is trying multiple payloads to probe the driver. |\n| 3 | Same as #1 | Repeated failure. | Repetition is a classic sign of a brute\u2011force or fuzzing attempt. |\n| 4 | Same as #1 | Repeated failure. | Same as above. |\n| 5 | `",
+      "LLM3_Qwen3": "Based on the log events provided and the SENTINEL anomaly score, here is the analysis:\n\n### 1. Why Anomalous\nThe session is flagged as anomalous primarily due to the **high frequency and repetition** of specific kernel-level InfiniBand Management Datagram (MAD) processing failures, combined with a critical fatal error.\n\n*   **Repetitive MAD Failures (Events 1\u20134):** The logs show four nearly identical entries from `mad_filter.c` indicating `mad_process failed (0)` for `InfiniHost0 port 1 QPN 0` with class `0x81`.\n    *   **Class 0x81** corresponds to **Subnet Management (SM)** or **General Path Service (GPS)** related MADs in InfiniBand.\n    *   The fact that these failures are occurring repeatedly in a short window (implied by the top-5 attribution) suggests a **storm of malformed or rejected management packets**.\n    *   The `attr` values (0.230, 0.214, 0.175, 0.167) indicate that each individual event contributes significantly to the anomaly score, and their cumulative effect pushes the total score (16.4694) far above the threshold (1.9338).\n*   **Fatal Error (Event 5):** The final event, `failed, return code = -254 (Fatal error (Local Catastrophic Error))`, indicates that the repeated MAD processing failures have escalated to a **local catastrophic state** in the InfiniBand driver or hardware interface. This is not a transient error but a critical failure condition.\n\n**In summary:** The anomaly is driven by a burst of rejected InfiniBand management packets (class 0x81) leading to a fatal local error, which is highly unusual for normal operational traffic.\n\n### 2. Most Likely Fault or Cyber Threat\n**Most Likely: Malformed Packet Injection / DoS Attack via InfiniBand Management Plane**\n\n*   **Cyber Threat (High Probability):** An attacker may be sending **malformed or unauthorized MADs** (Management Datagrams) to the InfiniBand Subnet Manager or host interface. Class 0x81 is often associated with Subnet Management. Flooding the port with invalid MADs can:\n    *   Exhaust"
+    },
+    "gs": 0.933,
+    "cr": 1.0,
+    "cos": 0.819,
+    "bert": 0.83,
+    "cs": 5,
+    "oq": 5,
+    "models_used": [
+      "openai/gpt-oss-120b",
+      "openai/gpt-oss-20b",
+      "qwen/qwen3.8-27b"
+    ],
+    "mistral_cs": 4,
+    "mistral_tc": 4,
+    "mistral_rc": 3,
+    "mistral_oq": 3,
+    "spearman_rho": 0.983,
+    "overlap": "4/5"
+  }
+]

@@ -1,0 +1,32 @@
+{
+  "HDFS": {
+    "dataset": "HDFS",
+    "head_params": 32121,
+    "encoder_params": 4120216,
+    "total_params": 4152337,
+    "flops_M": 16.49,
+    "gpu_latency_ms": 1.694,
+    "cpu_latency_ms": 1.615,
+    "throughput_sess_s": 23725.3
+  },
+  "BGL": {
+    "dataset": "BGL",
+    "head_params": 293217,
+    "encoder_params": 4120216,
+    "total_params": 4413433,
+    "flops_M": 41.88,
+    "gpu_latency_ms": 1.648,
+    "cpu_latency_ms": 1.713,
+    "throughput_sess_s": 23269.9
+  },
+  "TB": {
+    "dataset": "TB",
+    "head_params": 1739565,
+    "encoder_params": 4120216,
+    "total_params": 5859781,
+    "flops_M": 182.52,
+    "gpu_latency_ms": 1.673,
+    "cpu_latency_ms": 2.514,
+    "throughput_sess_s": 18894.6
+  }
+}
