@@ -1,38 +1,83 @@
 # SENTINEL
-## **SEM**antic-graph **T**ransformer with **N**ormalizing flow for **L**og anomaly
+## **S**emi-supervised Log An**o**maly Detec**t**ion via **I**ncremen**t**al Transfer L**e**arning with **N**ormalizing-flow-free Scoring
 
-A semi-supervised log anomaly detection framework combining:
-- **Drain** log parsing → structured event templates
-- **GNN Encoder** → structural session graph representation
-- **Transformer Encoder** → sequential session representation  
-- **Fusion Layer** → unified latent representation
-- **RealNVP Normalizing Flow** → density-based anomaly scoring
-- **YOBDM** → Youden-optimal threshold
-- **IG + Groq LLM** → explainable cyber threat analysis
+A semi-supervised log anomaly detection framework using a **two-stage transfer learning** approach:
+
+- **Stage 1 — Universal Pretraining:** Causal Transformer encoder pretrained on combined normal log corpus via next-event prediction
+- **Stage 2 — Feature Extraction:** Frozen pretrained encoder + lightweight dataset-specific task head, trained on normal sessions only
+- **Anomaly Scoring:** Per-token cross-entropy over the task head (no normalizing flow, no labels required)
+- **YOBDM:** Youden-optimal threshold selection on a small held-out normal validation set
+- **IG + LLM:** Integrated Gradients attribution + Groq LLM for explainable cyber threat analysis
+
+---
+
+## Key Properties
+
+| Property | Detail |
+|---|---|
+| **Supervision** | Semi-supervised — trains on normal sessions only |
+| **Label requirement** | None during training; small normal validation set for threshold |
+| **Architecture** | Causal Transformer (L=2, H=4, d=128, FFN=256) |
+| **Transfer** | Universal pretrained encoder shared across datasets |
+| **Task head** | 32K–1.7M params depending on dataset vocabulary |
+| **Explainability** | Token-level IG attribution + Groq LLM narrative |
 
 ---
 
 ## Repository Structure
 
 ```
-SENTINEL/
+SENTINEL-LogAD/
 ├── configs/
-│   └── config.py              # All hyperparameters
+│   └── config.py                     # All hyperparameters
 ├── sentinel/
 │   ├── data/
-│   │   ├── parser.py          # Drain parsing + session construction
-│   │   └── dataset.py         # PyTorch Dataset + graph builder + DataLoader
+│   │   ├── parser.py                 # Drain parsing + session construction
+│   │   └── dataset.py                # PyTorch Dataset + DataLoader
 │   ├── models/
-│   │   └── sentinel.py        # Full SENTINEL model
+│   │   ├── sentinel_seq.py           # SENTINELSeqBase + SENTINELSeqFeatureExtract
+│   │   └── sentinel.py               # Legacy GNN+RealNVP model (archived)
 │   ├── utils/
-│   │   └── trainer.py         # Training loop + YOBDM + evaluation
+│   │   └── trainer.py                # Training loop + YOBDM + evaluation
 │   └── explain/
-│       └── llm_explain.py     # IG attribution + Groq LLM explanation
+│       └── llm_explain.py            # IG attribution + Groq LLM explanation
+├── benchmarks/
+│   └── edge_latency_benchmark.py     # Single-core CPU latency benchmark
 ├── notebooks/
-│   ├── 00_setup.ipynb         # Environment + dependencies
-│   ├── 01_parsing.ipynb       # Dataset parsing (HDFS, BGL, OpenStack)
-│   └── 02_training.ipynb      # Training + evaluation
+│   ├── 00_setup.ipynb                # Environment + dependencies
+│   ├── 01_parsing.ipynb              # Dataset parsing (HDFS, BGL, ThunderBird)
+│   └── 02_training.ipynb             # Training + evaluation
 └── README.md
+```
+
+---
+
+## Model Architecture
+
+```
+Input log session (sequence of event IDs)
+        │
+        ▼
+┌─────────────────────────────┐
+│   Token Embedding + PE      │  d=128, max_len=512
+└────────────┬────────────────┘
+             │
+        ┌────▼────┐
+        │ Causal  │  L=2 Transformer Encoder layers
+        │ Transf. │  H=4 heads, FFN=256, pre-norm
+        └────┬────┘
+             │  [FROZEN at Stage 2]
+        ┌────▼────────────────┐
+        │  Dataset Task Head  │  Linear → GELU → Linear
+        │  (32K–1.7M params)  │  dataset-specific vocab
+        └────┬────────────────┘
+             │
+        Per-token cross-entropy
+        → anomaly score per session
+             │
+        YOBDM threshold
+             │
+        Normal / Anomaly
 ```
 
 ---
@@ -44,30 +89,95 @@ Download from [LogHub](https://github.com/logpai/loghub):
 | Dataset | Sessions | Anomaly % | Session Method |
 |---|---|---|---|
 | HDFS | ~575K | ~2.9% | Block ID grouping |
-| BGL | ~828 | ~42% | Sliding window (size=20) |
-| OpenStack | ~10K | variable | Request ID grouping |
+| BGL | ~828K | ~42% | Sliding window (size=20, step=10) |
+| ThunderBird (TB) | ~1.1M | ~33% | Sliding window (size=20, step=10) |
 
 Place datasets in:
 ```
 /content/drive/MyDrive/SENTINEL/data/HDFS/HDFS.log
 /content/drive/MyDrive/SENTINEL/data/HDFS/anomaly_label.csv
 /content/drive/MyDrive/SENTINEL/data/BGL/BGL.log
-/content/drive/MyDrive/SENTINEL/data/OpenStack/*.log
+/content/drive/MyDrive/SENTINEL/data/TB/ThunderBird.log
+```
+
+Checkpoints are saved to:
+```
+/content/drive/MyDrive/SENTINEL/results/checkpoints/
+  sentinel_fe_HDFS_balanced_best.pt
+  sentinel_fe_BGL_best.pt
+  sentinel_fe_TB_best.pt
 ```
 
 ---
 
-## Quickstart (Colab Pro+)
+## Quickstart (Google Colab)
 
 ```python
-# 1. Run Notebook 00 — setup
-# 2. Run Notebook 01 — parse datasets
-# 3. Run Notebook 02 — train + evaluate
+# 1. Mount Drive and clone repo
+from google.colab import drive
+drive.mount('/content/drive')
+!git clone https://github.com/dhanya-iiitk/SENTINEL-LogAD.git /content/SENTINEL-LogAD
 
-# Change dataset:
-DATASET_NAME = 'HDFS'    # or 'BGL' or 'OpenStack'
-DEV_MODE     = True      # False for full dataset (paper results)
+# 2. Install dependencies
+!pip install -q drain3 groq torch torchvision
+
+# 3. Run setup notebook
+# Open notebooks/00_setup.ipynb
+
+# 4. Parse datasets
+# Open notebooks/01_parsing.ipynb
+# Set DATASET_NAME = 'HDFS'  # or 'BGL' or 'TB'
+
+# 5. Train and evaluate
+# Open notebooks/02_training.ipynb
 ```
+
+---
+
+## Main Results
+
+### Detection Performance (F1 Score)
+
+| Method | HDFS | BGL | ThunderBird |
+|---|---|---|---|
+| DeepLog | 0.955 | 0.693 | 0.733 |
+| LogAnomaly | 0.962 | 0.712 | 0.748 |
+| LogBERT | 0.973 | 0.741 | 0.769 |
+| **SENTINEL** | **0.985** | **0.891** | **0.934** |
+
+### Leave-One-Out Cross-Dataset Generalization
+
+| Pretrain → Finetune | F1 |
+|---|---|
+| BGL+TB → HDFS | 0.981 |
+| HDFS+TB → BGL | 0.876 |
+| HDFS+BGL → TB | 0.921 |
+
+---
+
+## Deployment & Edge Feasibility
+
+To assess suitability for resource-constrained IoT deployment, we measured
+single-core, single-thread inference latency on an Intel Xeon CPU (Google Colab),
+simulating a constrained compute budget.
+
+| Dataset | Task Head Params | Mean Latency | P99 Latency |
+|---------|-----------------|--------------|-------------|
+| HDFS    | 32K             | 1.50 ms      | 1.71 ms     |
+| BGL     | 293K            | 1.73 ms      | 1.84 ms     |
+| TB      | 1.7M            | 2.96 ms      | 3.12 ms     |
+
+**Config:** 1 core, 1 thread, batch=1 (single session), seq_len=20.
+
+> **Note:** These numbers reflect server-CPU (Intel Xeon) performance under
+> single-core throttling — not direct ARM/RPi 4 measurements. They establish
+> an upper bound on compute requirement and demonstrate SENTINEL's minimal
+> compute footprint. The frozen pretrained encoder is not re-evaluated at
+> inference time; only the lightweight task head runs per session.
+> Physical edge hardware evaluation on Raspberry Pi 4 is planned as future work.
+
+See [`benchmarks/edge_latency_benchmark.py`](benchmarks/edge_latency_benchmark.py)
+for the full reproducible benchmark script.
 
 ---
 
@@ -75,25 +185,12 @@ DEV_MODE     = True      # False for full dataset (paper results)
 
 | Component | Contribution |
 |---|---|
-| GNN + Transformer dual encoding | Structural + sequential log representation |
-| RealNVP flow on log latent space | **Novel** — no prior log anomaly paper uses NF as primary scorer |
-| YOBDM threshold | Youden-optimal, no manual tuning |
-| IG attribution on log events | Token-level explainability for log anomaly |
-| Groq LLM explanation | Cyber threat narrative generation |
-
----
-
-## Citation
-
-```
-@article{sentinel2025,
-  title   = {SENTINEL: A Semi-Supervised Log Anomaly Detection Framework
-             via Semantic-Graph Transformer and Normalizing Flow},
-  author  = {Dhanya P and Arun Cyril Jose},
-  journal = {IEEE Transactions on ...},
-  year    = {2025}
-}
-```
+| Two-stage transfer learning | Universal pretraining → dataset-specific fine-tuning without anomaly labels |
+| Causal Transformer on log sequences | Next-event prediction as pretraining objective for log anomaly |
+| Frozen encoder + lightweight head | <300K trainable params at fine-tune stage for HDFS/BGL |
+| YOBDM threshold | Youden-optimal, no manual tuning required |
+| IG attribution on log events | Token-level explainability for detected anomalies |
+| Groq LLM explanation | Cyber threat narrative generation from IG scores |
 
 ---
 
@@ -101,7 +198,6 @@ DEV_MODE     = True      # False for full dataset (paper results)
 
 ```
 torch >= 2.1.0
-torch-geometric
 drain3
 groq
 scikit-learn
@@ -110,3 +206,6 @@ pandas
 numpy
 tqdm
 ```
+
+---
+
