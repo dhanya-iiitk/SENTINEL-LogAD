@@ -1,0 +1,12 @@
+                                         Case  HE (E1)  HE (E2)  HE (Mean)
+      BGL – Anomaly 1 (Microloader Assertion)     4.50     4.50       4.50
+                  BGL – Anomaly 2 (TLB Error)     5.00     5.00       5.00
+                                 BGL – Normal     5.00     5.00       5.00
+            BGL – Borderline (TLB + Recovery)     4.50     4.75       4.62
+       HDFS – Anomaly 1 (Block Write Failure)     4.50     4.50       4.50
+HDFS – Anomaly 2 (Socket Timeout + Exception)     4.75     4.75       4.75
+TB – Anomaly 1 (InfiniBand MAD + Fatal Error)     4.75     4.75       4.75
+           TB – Anomaly 2 (MAD Failure Storm)     4.75     4.75       4.75
+
+Overall HE Mean : 4.734
+Cohen's κ       : 0.920  (quadratic-weighted, 32 ratings)
