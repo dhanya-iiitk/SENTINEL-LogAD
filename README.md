@@ -47,6 +47,9 @@ SENTINEL-LogAD/
 │   ├── 00_setup.ipynb                # Environment + dependencies
 │   ├── 01_parsing.ipynb              # Dataset parsing (HDFS, BGL, ThunderBird)
 │   └── 02_training.ipynb             # Training + evaluation
+├── human_evaluation/
+│   ├── compute_he.py             # HE scoring script (Cohen's κ)
+│   └── he_results.txt            # Evaluation output
 └── README.md
 ```
 
@@ -209,3 +212,33 @@ tqdm
 
 ---
 
+
+---
+
+## Human Explainability Evaluation
+
+To assess the quality of SENTINEL's LLM-generated explanations, two domain experts independently rated 8 log sessions (7 anomalous + 1 normal) across 4 criteria on a 1–5 Likert scale:
+
+| Criterion | Definition |
+|---|---|
+| **Accuracy** | Do the highlighted log events correctly identify the root cause? |
+| **Clarity** | Is the LLM explanation clear and free of hallucinations? |
+| **Relevance** | Does the explanation correctly name the failure mode or attack vector? |
+| **Actionability** | Does the explanation suggest concrete remediation steps? |
+
+### Results
+
+| Case | HE (E1) | HE (E2) | HE (Mean) |
+|---|---|---|---|
+| BGL – Anomaly 1 (Microloader Assertion) | 4.50 | 4.50 | 4.50 |
+| BGL – Anomaly 2 (TLB Error) | 5.00 | 5.00 | 5.00 |
+| BGL – Normal | 5.00 | 5.00 | 5.00 |
+| BGL – Borderline (TLB + Recovery) | 4.50 | 4.75 | 4.62 |
+| HDFS – Anomaly 1 (Block Write Failure) | 4.50 | 4.50 | 4.50 |
+| HDFS – Anomaly 2 (Socket Timeout + Exception) | 4.75 | 4.75 | 4.75 |
+| TB – Anomaly 1 (InfiniBand MAD + Fatal Error) | 4.75 | 4.75 | 4.75 |
+| TB – Anomaly 2 (MAD Failure Storm) | 4.75 | 4.75 | 4.75 |
+
+**Overall HE Mean: 4.734 / 5** — **Cohen's κ = 0.920** (quadratic-weighted, 32 ratings)
+
+See [`human_evaluation/compute_he.py`](human_evaluation/compute_he.py) for the scoring script and [`human_evaluation/he_results.txt`](human_evaluation/he_results.txt) for full output.
